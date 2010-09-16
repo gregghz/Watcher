@@ -1,6 +1,35 @@
+# This is a sample jobs file. Yours should go in ~/.watcher/jobs.yml
+# if you run watcher.py start, this file and folder will be created
+
 job1:
-  label: Watch /tmp
+  # a generic label for a job.  Currently not used make it whatever you want
+  label: Watch /tmp for added or removed files
+
+  # directory or file to watch.  Probably should be abs path.
   watch: /tmp
-  events: IN_CREATE | IN_DELETE
+
+  # list of events to watch for.
+  # supported events:
+  # 'access' - File was accessed (read) (*)
+  # 'atrribute_change' - Metadata changed (permissions, timestamps, extended attributes, etc.) (*)
+  # 'write_close' - File opened for writing was closed (*)
+  # 'nowrite_close' - File not opened for writing was closed (*)
+  # 'create' - File/directory created in watched directory (*)
+  # 'delete' - File/directory deleted from watched directory (*)
+  # 'self_delete' - Watched file/directory was itself deleted
+  # 'modify' - File was modified (*)
+  # 'self_move' - Watched file/directory was itself moved
+  # 'move_from' - File moved out of watched directory (*)
+  # 'move_to' - File moved into watched directory (*)
+  # 'open' - File was opened (*)
+  #
+  # When monitoring a directory, the events marked with an asterisk (*) above
+  # can occur for files in the directory, in which case the name field in the
+  # returned event data identifies the name of the file within the directory.
+  events: ['create', 'delete']
+
+  # if true, watcher will monitor directories recursively for changes
   recursive: true
-  command: ls
+  
+  # the command to run. Can be any command. It's run as whatever user started watcher.
+  command: ls -l
