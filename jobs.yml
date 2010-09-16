@@ -1,0 +1,6 @@
+job1:
+  label: Watch /tmp
+  watch: /tmp
+  events: IN_CREATE | IN_DELETE
+  recursive: true
+  command: ls
