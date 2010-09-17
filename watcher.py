@@ -6,6 +6,7 @@ import sys, os
 import datetime
 import subprocess
 from types import *
+from string import Template
 from yaml import load, dump # load is for read yaml, dump is for writing
 try:
     from yaml import CLoader as Loader
@@ -16,47 +17,56 @@ except ImportError:
 class EventHandler(pyinotify.ProcessEvent):
     def __init__(self, command):
         pyinotify.ProcessEvent.__init__(self)
-        self.command = command.split()
+        self.command = command
 
-    def runCommand(self):
-        subprocess.call(self.command)
+    def runCommand(self, event):
+        t = Template(self.command)
+        command = t.substitute(watched=event.path, filename=event.pathname, tflags=event.maskname, nflags=event.mask)
+        subprocess.call(command.split())
 
     def process_IN_ACCESS(self, event):
         print "Access: ", event.pathname
+        self.runCommand(event)
 
     def process_IN_ATTRIB(self, event):
         print "Attrib: ", event.pathname
+        self.runCommand(event)
 
     def process_IN_CLOSE_WRITE(self, event):
         print "Close write: ", event.pathname
+        self.runCommand(event)
 
     def process_IN_CLOSE_NOWRITE(self, event):
         print "Close nowrite: ", event.pathname
+        self.runCommand(event)
 
     def process_IN_CREATE(self, event):
         print "Creating: ", event.pathname
-        sys.stderr.write("Creating: " + event.pathname + "\n")
-        self.runCommand()
+        self.runCommand(event)
 
     def process_IN_DELETE(self, event):
         print "Deleteing: ", event.pathname
-        sys.stderr.write("Deleteing: " + event.pathname + "\n")
-        self.runCommand()
+        self.runCommand(event)
 
     def process_IN_MODIFY(self, event):
         print "Modify: ", event.pathname
+        self.runCommand(event)
 
     def process_IN_MOVE_SELF(self, event):
         print "Move self: ", event.pathname
+        self.runCommand(event)
 
     def process_IN_MOVED_FROM(self, event):
         print "Moved from: ", event.pathname
+        self.runCommand(event)
 
     def process_IN_MOVED_TO(self, event):
         print "Moved to: ", event.pathname
+        self.runCommand(event)
 
     def process_IN_OPEN(self, event):
         print "Opened: ", event.pathname
+        self.runCommand(event)
 
 class WatcherDaemon(daemon.Daemon):
     def run(self):
@@ -79,33 +89,33 @@ class WatcherDaemon(daemon.Daemon):
 
             wm = pyinotify.WatchManager()
             handler = EventHandler(command)
-            
+
             wdds.append(wm.add_watch(folder, mask, rec=recursive))
             # BUT we need a new ThreadNotifier so I can specify a different
             # EventHandler instance for each job
             # this means that each job has its own thread as well (I think)
             notifiers.append(pyinotify.ThreadedNotifier(wm, handler))
-            
+
         # now we need to start ALL the notifiers.
         # TODO: load test this ... is having a thread for each a problem?
         for notifier in notifiers:
             notifier.start()
-            
+
     def _loadWatcherDirectory(self):
         home = os.path.expanduser('~')
         watcher_dir = home + '/.watcher'
         jobs_file = watcher_dir + '/jobs.yml'
-        
+
         if not os.path.isdir(watcher_dir):
             # create directory
             os.path.mkdir(watcher_dir)
-            
+
         if not os.path.isfile(jobs_file):
             # create jobs.yml
             f = open(jobs_file, 'w')
             f.close()
-        
-        return home + '/.watcher'
+
+        return watcher_dir
 
     def _parseMask(self, masks):
         ret = False;
@@ -135,30 +145,42 @@ class WatcherDaemon(daemon.Daemon):
                 ret = self._addMask(pyinotify.IN_MOVED_TO, ret)
             elif 'open' == mask:
                 ret = self._addMask(pyinotify.IN_OPEN, ret)
+            elif 'all' == mask:
+                m = pyinotify.IN_ACCESS | pyinotify.IN_ATTRIB | pyinotify.IN_CLOSE_WRITE | \
+                    pyinotify.IN_CLOSE_NOWRITE | pyinotify.IN_CREATE | pyinotify.IN_DELETE | \
+                    pyinotify.IN_DELETE_SELF | pyinotify.IN_MODIFY | pyinotify.IN_MOVE_SELF | \
+                    pyinotify.IN_MOVED_FROM | pyinotify.IN_MOVED_TO | pyinotify.IN_OPEN
+                ret = self._addMask(m, ret)
+            elif 'move' == mask:
+                ret = self._addMask(pyinotify.IN_MOVED_FROM | pyinotify.IN_MOVED_TO, ret)
+            elif 'close' == mask:
+                ret = self._addMask(pyinotify.IN_CLOSE_WRITE | IN_CLOSE_NOWRITE, ret)
 
         return ret
 
-    def _addMask(self, new_option, current_options=None):
+    def _addMask(self, new_option, current_options):
         if not current_options:
             return new_option
         else:
             return current_options | new_option
 
 if __name__ == "__main__":
+    log = '/tmp/watcher_out'
     try:
         # TODO: make stdout and stderr neutral location
-        daemon = WatcherDaemon('/tmp/watcher.pid', stdout='/dev/null', stderr='/dev/null')
+        daemon = WatcherDaemon('/tmp/watcher.pid', stdout=log, stderr=log)
         if len(sys.argv) == 2:
             if 'start' == sys.argv[1]:
-                jobs_file = os.path.expanduser('~') + '/.watcher' + '/jobs.yml'
-                if os.path.getsize(jobs_file) == 0:
-                    print 'No jobs found, edit you jobs file!!! ~/.watcher/jobs.yml'
-                    sys.exit(2)
+                f = open(log, 'w')
+                f.close()
                 daemon.start()
             elif 'stop' == sys.argv[1]:
+                os.remove(log)
                 daemon.stop()
             elif 'restart' == sys.argv[1]:
                 daemon.restart()
+            elif '--non-daemon' == sys.argv[1]:
+                daemon.run()
             else:
                 print "Unkown Command"
                 sys.exit(2)
@@ -168,4 +190,5 @@ if __name__ == "__main__":
             sys.exit(2)
     except Exception, e:
         print e
+        os.remove(log)
         raise

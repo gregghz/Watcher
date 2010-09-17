@@ -28,8 +28,20 @@ job1:
   # returned event data identifies the name of the file within the directory.
   events: ['create', 'delete']
 
+  # TODO:
+  # this currently isn't implemented, but this is where support will be added for:
+  # IN_DONT_FOLLOW, IN_ONESHOT, IN_ONLYDIR and IN_NO_LOOP
+  # There will be further documentation on these once they are implmented
+  options: []
+
   # if true, watcher will monitor directories recursively for changes
   recursive: true
   
   # the command to run. Can be any command. It's run as whatever user started watcher.
-  command: ls -l
+  # The following wildards may be used inside command specification:
+  # $$ dollar sign
+  # $watched watched filesystem path (see above)
+  # $filename event-related file name
+  # $tflags event flags (textually)
+  # $nflags event flags (numerically)
+  command: ls -l $filename
