@@ -44,6 +44,9 @@ job1:
   # 'move_from' - File moved out of watched directory (*)
   # 'move_to' - File moved into watched directory (*)
   # 'open' - File was opened (*)
+  # 'all' - Any of the above events are fired
+  # 'move' - A combination of 'move_from' and 'move_to'
+  # 'close' - A combination of 'write_close' and 'nowrite_close'
   #
   # When monitoring a directory, the events marked with an asterisk (*) above
   # can occur for files in the directory, in which case the name field in the
