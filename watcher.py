@@ -213,7 +213,7 @@ class EventHandler(pyinotify.ProcessEvent):
         print "Opened: ", event.pathname
         self.runCommand(event)
 
-class WatcherDaemon(daemon.Daemon):
+class WatcherDaemon(Daemon):
     def run(self):
         print datetime.datetime.today()
 
