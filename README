@@ -1,5 +1,12 @@
 See jobs.yml for proper configuration syntax
 
+Dependencies: python, python-pyinotify
+
+In Ubuntu (and Debian):
+
+sudo apt-get install python python-pyinotify
+
+
 make sure watcher.py is marked as executable
 
 chmod +x watcher.py
