@@ -222,13 +222,13 @@ class WatcherDaemon(Daemon):
         self.config  = config
 
     def run(self):
-        print datetime.datetime.today()
+        log('Daemon started')
         wdds      = []
         notifiers = []
 
         # read jobs from config file
         for section in self.config.sections():
-            sys.stdout.write(section + "\n")
+            log(section + ": " + self.config.get(section,'watch'))
             # get the basic config info
             mask      = self._parseMask(self.config.get(section,'events').split(','))
             folder    = self.config.get(section,'watch')
@@ -248,6 +248,7 @@ class WatcherDaemon(Daemon):
         # TODO: load test this ... is having a thread for each a problem?
         for notifier in notifiers:
             notifier.start()
+
 
     def _parseMask(self, masks):
         ret = False;
@@ -298,6 +299,12 @@ class WatcherDaemon(Daemon):
         else:
             return current_options | new_option
 
+
+
+def log(msg):
+    sys.stdout.write("%s %s\n" % ( str(datetime.datetime.now()), msg ))
+
+
 if __name__ == "__main__":
     # Parse commandline arguments
     parser = argparse.ArgumentParser(
@@ -319,10 +326,8 @@ if __name__ == "__main__":
     else:
         confok = config.read(['/etc/watcher.ini', os.path.expanduser('~/.watcher.ini')]);
 
-    if(confok):
-        print "Read config from %s" % str(confok);
-    else:
-        print "Failed to read config file."
+    if(not confok):
+        sys.stderr.write("Failed to read config file. Try -c parameter\n")
         sys.exit(4);
 
     # Initialize the daemon
@@ -332,7 +337,6 @@ if __name__ == "__main__":
     if 'start' == args.command:
         daemon.start()
     elif 'stop' == args.command:
-        os.remove(log)
         daemon.stop()
     elif 'restart' == args.command:
         daemon.restart()
