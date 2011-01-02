@@ -27,12 +27,7 @@ import datetime
 import subprocess
 from types import *
 from string import Template
-from yaml import load, dump # load is for read yaml, dump is for writing
-try:
-    from yaml import CLoader as Loader
-    from yaml import CDumper as Dumper
-except ImportError:
-    from yaml import Loader, Dumper
+import ConfigParser
 
 class Daemon:
     """
@@ -220,20 +215,23 @@ class WatcherDaemon(Daemon):
     def run(self):
         print datetime.datetime.today()
 
-        dir = self._loadWatcherDirectory()
-        jobs_file = file(dir + '/jobs.yml', 'r')
-        wdds = []
+        wdds      = []
         notifiers = []
 
-        # parse jobs.yml and add_watch/notifier for each entry
-        jobs = load(jobs_file, Loader=Loader)
-        for job in jobs.iteritems():
-            sys.stdout.write(job[0] + "\n")
+        # load job file #FIXME make configurable
+        jobs_file = './jobs.ini'
+        jobs = ConfigParser.ConfigParser()
+        jobs.read(jobs_file)
+
+        for section in jobs.sections():
+            sys.stdout.write(section + "\n")
             # get the basic config info
-            mask = self._parseMask(job[1]['events'])
-            folder = job[1]['watch']
-            recursive = job[1]['recursive']
-            command = job[1]['command']
+            mask      = self._parseMask(jobs.get(section,'events').split(','))
+            folder    = jobs.get(section,'watch')
+            recursive = ( jobs.get(section,'recursive') == 'true' )
+            command   = jobs.get(section,'command')
+
+            print mask;
 
             wm = pyinotify.WatchManager()
             handler = EventHandler(command)
@@ -248,22 +246,6 @@ class WatcherDaemon(Daemon):
         # TODO: load test this ... is having a thread for each a problem?
         for notifier in notifiers:
             notifier.start()
-
-    def _loadWatcherDirectory(self):
-        home = os.path.expanduser('~')
-        watcher_dir = home + '/.watcher'
-        jobs_file = watcher_dir + '/jobs.yml'
-
-        if not os.path.isdir(watcher_dir):
-            # create directory
-            os.path.mkdir(watcher_dir)
-
-        if not os.path.isfile(jobs_file):
-            # create jobs.yml
-            f = open(jobs_file, 'w')
-            f.close()
-
-        return watcher_dir
 
     def _parseMask(self, masks):
         ret = False;
