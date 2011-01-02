@@ -33,7 +33,7 @@ try:
     from yaml import CDumper as Dumper
 except ImportError:
     from yaml import Loader, Dumper
-    
+
 class Daemon:
     """
     A generic daemon class
@@ -152,7 +152,7 @@ class Daemon:
         """
         self.stop()
         self.start()
-        
+
     def run(self):
         """
         You should override this method when you subclass Daemon. It will be called after the process has been
