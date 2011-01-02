@@ -28,6 +28,7 @@ import subprocess
 from types import *
 from string import Template
 import ConfigParser
+import argparse
 
 class Daemon:
     """
@@ -212,26 +213,27 @@ class EventHandler(pyinotify.ProcessEvent):
         self.runCommand(event)
 
 class WatcherDaemon(Daemon):
+
+    def __init__(self, config):
+        self.stdin   = '/dev/null'
+        self.stdout  = config.get('DEFAULT','logfile')
+        self.stderr  = config.get('DEFAULT','logfile')
+        self.pidfile = config.get('DEFAULT','pidfile')
+        self.config  = config
+
     def run(self):
         print datetime.datetime.today()
-
         wdds      = []
         notifiers = []
 
-        # load job file #FIXME make configurable
-        jobs_file = './jobs.ini'
-        jobs = ConfigParser.ConfigParser()
-        jobs.read(jobs_file)
-
-        for section in jobs.sections():
+        # read jobs from config file
+        for section in self.config.sections():
             sys.stdout.write(section + "\n")
             # get the basic config info
-            mask      = self._parseMask(jobs.get(section,'events').split(','))
-            folder    = jobs.get(section,'watch')
-            recursive = ( jobs.get(section,'recursive') == 'true' )
-            command   = jobs.get(section,'command')
-
-            print mask;
+            mask      = self._parseMask(self.config.get(section,'events').split(','))
+            folder    = self.config.get(section,'watch')
+            recursive = self.config.getboolean(section,'recursive')
+            command   = self.config.get(section,'command')
 
             wm = pyinotify.WatchManager()
             handler = EventHandler(command)
@@ -251,6 +253,8 @@ class WatcherDaemon(Daemon):
         ret = False;
 
         for mask in masks:
+            mask = mask.strip()
+
             if 'access' == mask:
                 ret = self._addMask(pyinotify.IN_ACCESS, ret)
             elif 'atrribute_change' == mask:
@@ -295,30 +299,46 @@ class WatcherDaemon(Daemon):
             return current_options | new_option
 
 if __name__ == "__main__":
-    log = '/tmp/watcher_out'
-    try:
-        # TODO: make stdout and stderr neutral location
-        daemon = WatcherDaemon('/tmp/watcher.pid', stdout=log, stderr=log)
-        if len(sys.argv) == 2:
-            if 'start' == sys.argv[1]:
-                f = open(log, 'w')
-                f.close()
-                daemon.start()
-            elif 'stop' == sys.argv[1]:
-                os.remove(log)
-                daemon.stop()
-            elif 'restart' == sys.argv[1]:
-                daemon.restart()
-            elif '--non-daemon' == sys.argv[1]:
-                daemon.run()
-            else:
-                print "Unkown Command"
-                sys.exit(2)
-            sys.exit(0)
-        else:
-            print "Usage: %s start|stop|restart" % sys.argv[0]
-            sys.exit(2)
-    except Exception, e:
-        print e
+    # Parse commandline arguments
+    parser = argparse.ArgumentParser(
+                description='A daemon to monitor changes within specified directories and run commands on these changes.',
+             )
+    parser.add_argument('-c','--config',
+                        action='store',
+                        help='Path to the config file (default: %(default)s)')
+    parser.add_argument('command',
+                        action='store',
+                        choices=['start','stop','restart','debug'],
+                        help='What to do. Use debug to start in the foreground')
+    args = parser.parse_args()
+
+    # Parse the config file
+    config = ConfigParser.ConfigParser()
+    if(args.config):
+        confok = config.read(args.config)
+    else:
+        confok = config.read(['/etc/watcher.ini', os.path.expanduser('~/.watcher.ini')]);
+
+    if(confok):
+        print "Read config from %s" % str(confok);
+    else:
+        print "Failed to read config file."
+        sys.exit(4);
+
+    # Initialize the daemon
+    daemon = WatcherDaemon(config)
+
+    # Execute the command
+    if 'start' == args.command:
+        daemon.start()
+    elif 'stop' == args.command:
         os.remove(log)
-        raise
+        daemon.stop()
+    elif 'restart' == args.command:
+        daemon.restart()
+    elif 'debug' == args.command:
+        daemon.run()
+    else:
+        print "Unkown Command"
+        sys.exit(2)
+    sys.exit(0)
