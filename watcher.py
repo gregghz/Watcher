@@ -167,7 +167,10 @@ class EventHandler(pyinotify.ProcessEvent):
     def runCommand(self, event):
         t = Template(self.command)
         command = t.substitute(watched=event.path, filename=event.pathname, tflags=event.maskname, nflags=event.mask)
-        subprocess.call(command.split())
+        try:
+            subprocess.call(command.split())
+        except OSError, err:
+            print "Failed to run command '%s' %s" % (command, str(err))
 
     def process_IN_ACCESS(self, event):
         print "Access: ", event.pathname
