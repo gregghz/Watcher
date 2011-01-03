@@ -27,12 +27,8 @@ import datetime
 import subprocess
 from types import *
 from string import Template
-from yaml import load, dump # load is for read yaml, dump is for writing
-try:
-    from yaml import CLoader as Loader
-    from yaml import CDumper as Dumper
-except ImportError:
-    from yaml import Loader, Dumper
+import ConfigParser
+import argparse
 
 class Daemon:
     """
@@ -217,23 +213,27 @@ class EventHandler(pyinotify.ProcessEvent):
         self.runCommand(event)
 
 class WatcherDaemon(Daemon):
-    def run(self):
-        print datetime.datetime.today()
 
-        dir = self._loadWatcherDirectory()
-        jobs_file = file(dir + '/jobs.yml', 'r')
-        wdds = []
+    def __init__(self, config):
+        self.stdin   = '/dev/null'
+        self.stdout  = config.get('DEFAULT','logfile')
+        self.stderr  = config.get('DEFAULT','logfile')
+        self.pidfile = config.get('DEFAULT','pidfile')
+        self.config  = config
+
+    def run(self):
+        log('Daemon started')
+        wdds      = []
         notifiers = []
 
-        # parse jobs.yml and add_watch/notifier for each entry
-        jobs = load(jobs_file, Loader=Loader)
-        for job in jobs.iteritems():
-            sys.stdout.write(job[0] + "\n")
+        # read jobs from config file
+        for section in self.config.sections():
+            log(section + ": " + self.config.get(section,'watch'))
             # get the basic config info
-            mask = self._parseMask(job[1]['events'])
-            folder = job[1]['watch']
-            recursive = job[1]['recursive']
-            command = job[1]['command']
+            mask      = self._parseMask(self.config.get(section,'events').split(','))
+            folder    = self.config.get(section,'watch')
+            recursive = self.config.getboolean(section,'recursive')
+            command   = self.config.get(section,'command')
 
             wm = pyinotify.WatchManager()
             handler = EventHandler(command)
@@ -249,26 +249,13 @@ class WatcherDaemon(Daemon):
         for notifier in notifiers:
             notifier.start()
 
-    def _loadWatcherDirectory(self):
-        home = os.path.expanduser('~')
-        watcher_dir = home + '/.watcher'
-        jobs_file = watcher_dir + '/jobs.yml'
-
-        if not os.path.isdir(watcher_dir):
-            # create directory
-            os.path.mkdir(watcher_dir)
-
-        if not os.path.isfile(jobs_file):
-            # create jobs.yml
-            f = open(jobs_file, 'w')
-            f.close()
-
-        return watcher_dir
 
     def _parseMask(self, masks):
         ret = False;
 
         for mask in masks:
+            mask = mask.strip()
+
             if 'access' == mask:
                 ret = self._addMask(pyinotify.IN_ACCESS, ret)
             elif 'atrribute_change' == mask:
@@ -312,31 +299,51 @@ class WatcherDaemon(Daemon):
         else:
             return current_options | new_option
 
+
+
+def log(msg):
+    sys.stdout.write("%s %s\n" % ( str(datetime.datetime.now()), msg ))
+
+
 if __name__ == "__main__":
-    log = '/tmp/watcher_out'
-    try:
-        # TODO: make stdout and stderr neutral location
-        daemon = WatcherDaemon('/tmp/watcher.pid', stdout=log, stderr=log)
-        if len(sys.argv) == 2:
-            if 'start' == sys.argv[1]:
-                f = open(log, 'w')
-                f.close()
-                daemon.start()
-            elif 'stop' == sys.argv[1]:
-                os.remove(log)
-                daemon.stop()
-            elif 'restart' == sys.argv[1]:
-                daemon.restart()
-            elif '--non-daemon' == sys.argv[1]:
-                daemon.run()
-            else:
-                print "Unkown Command"
-                sys.exit(2)
-            sys.exit(0)
-        else:
-            print "Usage: %s start|stop|restart" % sys.argv[0]
-            sys.exit(2)
-    except Exception, e:
-        print e
-        os.remove(log)
-        raise
+    # Parse commandline arguments
+    parser = argparse.ArgumentParser(
+                description='A daemon to monitor changes within specified directories and run commands on these changes.',
+             )
+    parser.add_argument('-c','--config',
+                        action='store',
+                        help='Path to the config file (default: %(default)s)')
+    parser.add_argument('command',
+                        action='store',
+                        choices=['start','stop','restart','debug'],
+                        help='What to do. Use debug to start in the foreground')
+    args = parser.parse_args()
+
+    # Parse the config file
+    config = ConfigParser.ConfigParser()
+    if(args.config):
+        confok = config.read(args.config)
+    else:
+        confok = config.read(['/etc/watcher.ini', os.path.expanduser('~/.watcher.ini')]);
+
+    if(not confok):
+        sys.stderr.write("Failed to read config file. Try -c parameter\n")
+        sys.exit(4);
+
+    # Initialize the daemon
+    daemon = WatcherDaemon(config)
+
+    # Execute the command
+    if 'start' == args.command:
+        daemon.start()
+    elif 'stop' == args.command:
+        daemon.stop()
+    elif 'restart' == args.command:
+        daemon.restart()
+    elif 'debug' == args.command:
+        daemon.run()
+    else:
+        print "Unkown Command"
+        sys.exit(2)
+    sys.exit(0)
+
