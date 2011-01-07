@@ -19,6 +19,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+### BEGIN INIT INFO
+# Provides:          watcher.py
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Monitor directories for file changes
+# Description:       Monitor directories specified in /etc/watcher.ini for
+#                    changes using the Kernel's inotify mechanism and run
+#                    jobs when files or directories change
+### END INIT INFO
+
 import sys, os, time, atexit
 from signal import SIGTERM
 import pyinotify
