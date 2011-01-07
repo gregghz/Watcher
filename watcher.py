@@ -266,7 +266,7 @@ class WatcherDaemon(Daemon):
 
             if 'access' == mask:
                 ret = self._addMask(pyinotify.IN_ACCESS, ret)
-            elif 'atrribute_change' == mask:
+            elif 'attribute_change' == mask:
                 ret = self._addMask(pyinotify.IN_ATTRIB, ret)
             elif 'write_close' == mask:
                 ret = self._addMask(pyinotify.IN_CLOSE_WRITE, ret)
