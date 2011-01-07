@@ -160,11 +160,19 @@ class EventHandler(pyinotify.ProcessEvent):
         pyinotify.ProcessEvent.__init__(self)
         self.command = command
 
+    # from http://stackoverflow.com/questions/35817/how-to-escape-os-system-calls-in-python
+    def shellquote(self,s):
+        s = str(s)
+        return "'" + s.replace("'", "'\\''") + "'"
+
     def runCommand(self, event):
         t = Template(self.command)
-        command = t.substitute(watched=event.path, filename=event.pathname, tflags=event.maskname, nflags=event.mask)
+        command = t.substitute(watched=self.shellquote(event.path),
+                               filename=self.shellquote(event.pathname),
+                               tflags=self.shellquote(event.maskname),
+                               nflags=self.shellquote(event.mask))
         try:
-            subprocess.call(command.split())
+            os.system(command)
         except OSError, err:
             print "Failed to run command '%s' %s" % (command, str(err))
 
