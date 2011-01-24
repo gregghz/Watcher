@@ -19,6 +19,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+### BEGIN INIT INFO
+# Provides:          watcher.py
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Monitor directories for file changes
+# Description:       Monitor directories specified in /etc/watcher.ini for
+#                    changes using the Kernel's inotify mechanism and run
+#                    jobs when files or directories change
+### END INIT INFO
+
 import sys, os, time, atexit
 from signal import SIGTERM
 import pyinotify
@@ -161,11 +173,19 @@ class EventHandler(pyinotify.ProcessEvent):
         pyinotify.ProcessEvent.__init__(self)
         self.command = command
 
+    # from http://stackoverflow.com/questions/35817/how-to-escape-os-system-calls-in-python
+    def shellquote(self,s):
+        s = str(s)
+        return "'" + s.replace("'", "'\\''") + "'"
+
     def runCommand(self, event):
         t = Template(self.command)
-        command = t.substitute(watched=event.path, filename=event.pathname, tflags=event.maskname, nflags=event.mask)
+        command = t.substitute(watched=self.shellquote(event.path),
+                               filename=self.shellquote(event.pathname),
+                               tflags=self.shellquote(event.maskname),
+                               nflags=self.shellquote(event.mask))
         try:
-            subprocess.call(command.split())
+            os.system(command)
         except OSError, err:
             print "Failed to run command '%s' %s" % (command, str(err))
 
