@@ -29,6 +29,7 @@ from types import *
 from string import Template
 import ConfigParser
 import argparse
+import config
 
 class Daemon:
     """
@@ -216,9 +217,9 @@ class WatcherDaemon(Daemon):
 
     def __init__(self, config):
         self.stdin   = '/dev/null'
-        self.stdout  = config.get('DEFAULT','logfile')
-        self.stderr  = config.get('DEFAULT','logfile')
-        self.pidfile = config.get('DEFAULT','pidfile')
+        self.stdout = config.get('logfile')
+        self.stderr = config.get('logfile')
+        self.pidfile = config.get('pidfile')
         self.config  = config
 
     def run(self):
@@ -227,18 +228,11 @@ class WatcherDaemon(Daemon):
         notifiers = []
 
         # read jobs from config file
-        for section in self.config.sections():
-            log(section + ": " + self.config.get(section,'watch'))
-            # get the basic config info
-            mask      = self._parseMask(self.config.get(section,'events').split(','))
-            folder    = self.config.get(section,'watch')
-            recursive = self.config.getboolean(section,'recursive')
-            command   = self.config.get(section,'command')
-
+        for job in self.config.jobs():
             wm = pyinotify.WatchManager()
-            handler = EventHandler(command)
+            handler = EventHandler(job.command)
 
-            wdds.append(wm.add_watch(folder, mask, rec=recursive))
+            wdds.append(wm.add_watch(job.folder, job.mask, rec=job.recursive))
             # BUT we need a new ThreadNotifier so I can specify a different
             # EventHandler instance for each job
             # this means that each job has its own thread as well (I think)
@@ -248,58 +242,6 @@ class WatcherDaemon(Daemon):
         # TODO: load test this ... is having a thread for each a problem?
         for notifier in notifiers:
             notifier.start()
-
-
-    def _parseMask(self, masks):
-        ret = False;
-
-        for mask in masks:
-            mask = mask.strip()
-
-            if 'access' == mask:
-                ret = self._addMask(pyinotify.IN_ACCESS, ret)
-            elif 'atrribute_change' == mask:
-                ret = self._addMask(pyinotify.IN_ATTRIB, ret)
-            elif 'write_close' == mask:
-                ret = self._addMask(pyinotify.IN_CLOSE_WRITE, ret)
-            elif 'nowrite_close' == mask:
-                ret = self._addMask(pyinotify.IN_CLOSE_NOWRITE, ret)
-            elif 'create' == mask:
-                ret = self._addMask(pyinotify.IN_CREATE, ret)
-            elif 'delete' == mask:
-                ret = self._addMask(pyinotify.IN_DELETE, ret)
-            elif 'self_delete' == mask:
-                ret = self._addMask(pyinotify.IN_DELETE_SELF, ret)
-            elif 'modify' == mask:
-                ret = self._addMask(pyinotify.IN_MODIFY, ret)
-            elif 'self_move' == mask:
-                ret = self._addMask(pyinotify.IN_MOVE_SELF, ret)
-            elif 'move_from' == mask:
-                ret = self._addMask(pyinotify.IN_MOVED_FROM, ret)
-            elif 'move_to' == mask:
-                ret = self._addMask(pyinotify.IN_MOVED_TO, ret)
-            elif 'open' == mask:
-                ret = self._addMask(pyinotify.IN_OPEN, ret)
-            elif 'all' == mask:
-                m = pyinotify.IN_ACCESS | pyinotify.IN_ATTRIB | pyinotify.IN_CLOSE_WRITE | \
-                    pyinotify.IN_CLOSE_NOWRITE | pyinotify.IN_CREATE | pyinotify.IN_DELETE | \
-                    pyinotify.IN_DELETE_SELF | pyinotify.IN_MODIFY | pyinotify.IN_MOVE_SELF | \
-                    pyinotify.IN_MOVED_FROM | pyinotify.IN_MOVED_TO | pyinotify.IN_OPEN
-                ret = self._addMask(m, ret)
-            elif 'move' == mask:
-                ret = self._addMask(pyinotify.IN_MOVED_FROM | pyinotify.IN_MOVED_TO, ret)
-            elif 'close' == mask:
-                ret = self._addMask(pyinotify.IN_CLOSE_WRITE | IN_CLOSE_NOWRITE, ret)
-
-        return ret
-
-    def _addMask(self, new_option, current_options):
-        if not current_options:
-            return new_option
-        else:
-            return current_options | new_option
-
-
 
 def log(msg):
     sys.stdout.write("%s %s\n" % ( str(datetime.datetime.now()), msg ))
@@ -317,21 +259,16 @@ if __name__ == "__main__":
                         action='store',
                         choices=['start','stop','restart','debug'],
                         help='What to do. Use debug to start in the foreground')
+    parser.add_argument('-t', '--config_type',
+                        action='store',
+                        help='Select either \'yml\' or \'ini\' style config file (default: yml)')
     args = parser.parse_args()
 
-    # Parse the config file
-    config = ConfigParser.ConfigParser()
-    if(args.config):
-        confok = config.read(args.config)
-    else:
-        confok = config.read(['/etc/watcher.ini', os.path.expanduser('~/.watcher.ini')]);
-
-    if(not confok):
-        sys.stderr.write("Failed to read config file. Try -c parameter\n")
-        sys.exit(4);
+    # Get a proper Parser
+    conf = config.parserFactory(args)
 
     # Initialize the daemon
-    daemon = WatcherDaemon(config)
+    daemon = WatcherDaemon(conf)
 
     # Execute the command
     if 'start' == args.command:
