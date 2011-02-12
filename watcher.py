@@ -256,7 +256,7 @@ class WatcherDaemon(Daemon):
 
         if not os.path.isdir(watcher_dir):
             # create directory
-            os.path.mkdir(watcher_dir)
+            os.mkdir(watcher_dir)
 
         if not os.path.isfile(jobs_file):
             # create jobs.yml
