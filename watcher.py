@@ -227,22 +227,23 @@ class WatcherDaemon(Daemon):
 
         # parse jobs.yml and add_watch/notifier for each entry
         jobs = load(jobs_file, Loader=Loader)
-        for job in jobs.iteritems():
-            sys.stdout.write(job[0] + "\n")
-            # get the basic config info
-            mask = self._parseMask(job[1]['events'])
-            folder = job[1]['watch']
-            recursive = job[1]['recursive']
-            command = job[1]['command']
+        if jobs is not None:
+            for job in jobs.iteritems():
+                sys.stdout.write(job[0] + "\n")
+                # get the basic config info
+                mask = self._parseMask(job[1]['events'])
+                folder = job[1]['watch']
+                recursive = job[1]['recursive']
+                command = job[1]['command']
 
-            wm = pyinotify.WatchManager()
-            handler = EventHandler(command)
+                wm = pyinotify.WatchManager()
+                handler = EventHandler(command)
 
-            wdds.append(wm.add_watch(folder, mask, rec=recursive))
-            # BUT we need a new ThreadNotifier so I can specify a different
-            # EventHandler instance for each job
-            # this means that each job has its own thread as well (I think)
-            notifiers.append(pyinotify.ThreadedNotifier(wm, handler))
+                wdds.append(wm.add_watch(folder, mask, rec=recursive))
+                # BUT we need a new ThreadNotifier so I can specify a different
+                # EventHandler instance for each job
+                # this means that each job has its own thread as well (I think)
+                notifiers.append(pyinotify.ThreadedNotifier(wm, handler))
 
         # now we need to start ALL the notifiers.
         # TODO: load test this ... is having a thread for each a problem?
