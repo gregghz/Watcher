@@ -314,6 +314,10 @@ class WatcherDaemon(Daemon):
 
 if __name__ == "__main__":
     log = '/tmp/watcher_out'
+    # create the log
+    f = open(log, 'w')
+    f.close()
+    
     try:
         # TODO: make stdout and stderr neutral location
         daemon = WatcherDaemon('/tmp/watcher.pid', stdout=log, stderr=log)
