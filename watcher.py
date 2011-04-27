@@ -160,9 +160,12 @@ class Daemon:
         """
 
 class EventHandler(pyinotify.ProcessEvent):
-    def __init__(self, command):
+    def __init__(self, command, recursive, mask, parent):
         pyinotify.ProcessEvent.__init__(self)
         self.command = command
+        self.recursive = recursive
+        self.mask = mask
+        self.parent = parent
 
     def runCommand(self, event):
         t = Template(self.command)
@@ -171,6 +174,9 @@ class EventHandler(pyinotify.ProcessEvent):
             subprocess.call(command.split())
         except OSError, err:
             print "Failed to run command '%s' %s" % (command, str(err))
+            
+        if self.recursive and os.path.isdir(event.pathname):
+            self.parent.addWatch(self.mask, event.pathname, True, self.command)
 
     def process_IN_ACCESS(self, event):
         print "Access: ", event.pathname
@@ -222,8 +228,8 @@ class WatcherDaemon(Daemon):
 
         dir = self._loadWatcherDirectory()
         jobs_file = file(dir + '/jobs.yml', 'r')
-        wdds = []
-        notifiers = []
+        self.wdds = []
+        self.notifiers = []
 
         # parse jobs.yml and add_watch/notifier for each entry
         jobs = load(jobs_file, Loader=Loader)
@@ -236,19 +242,25 @@ class WatcherDaemon(Daemon):
                 recursive = job[1]['recursive']
                 command = job[1]['command']
 
-                wm = pyinotify.WatchManager()
-                handler = EventHandler(command)
-
-                wdds.append(wm.add_watch(folder, mask, rec=recursive))
-                # BUT we need a new ThreadNotifier so I can specify a different
-                # EventHandler instance for each job
-                # this means that each job has its own thread as well (I think)
-                notifiers.append(pyinotify.ThreadedNotifier(wm, handler))
+                self.addWatch(mask, folder, recursive, command)
 
         # now we need to start ALL the notifiers.
         # TODO: load test this ... is having a thread for each a problem?
-        for notifier in notifiers:
-            notifier.start()
+        #for notifier in self.notifiers:
+        #    notifier.start()
+            
+    def addWatch(self, mask, folder, recursive, command):
+        wm = pyinotify.WatchManager()
+        handler = EventHandler(command, recursive, mask, self)
+        
+        self.wdds.append(wm.add_watch(folder, mask, rec=recursive))
+        # BUT we need a new ThreadNotifier so I can specify a different
+        # EventHandler instance for each job
+        # this means that each job has its own thread as well (I think)
+        n = pyinotify.ThreadedNotifier(wm, handler)
+        self.notifiers.append(pyinotify.ThreadedNotifier(wm, handler))
+        
+        n.start()
 
     def _loadWatcherDirectory(self):
         home = os.path.expanduser('~')
