@@ -160,23 +160,46 @@ class Daemon:
         """
 
 class EventHandler(pyinotify.ProcessEvent):
-    def __init__(self, command, recursive, mask, parent):
+    def __init__(self, command, recursive, mask, parent, prefix=""):
         pyinotify.ProcessEvent.__init__(self)
-        self.command = command
-        self.recursive = recursive
-        self.mask = mask
-        self.parent = parent
+        self.command = command     #the command to be run
+        self.recursive = recursive #watch recursively?
+        self.mask = mask           #the watch mask
+        self.parent = parent       #should be calling instance of WatcherDaemon
+        self.prefix = prefix       #prefix to handle recursively watching new dirs
 
     def runCommand(self, event):
         t = Template(self.command)
-        command = t.substitute(watched=event.path, filename=event.pathname, tflags=event.maskname, nflags=event.mask)
+        
+        #build the dest_file
+        dfile = event.name
+        if self.prefix != "":
+            dfile = self.prefix + '/' + dfile
+        
+        #run substitutions on the command
+        command = t.substitute(watched=event.path, 
+                               filename=event.pathname,
+                               dest_file=dfile, 
+                               tflags=event.maskname, 
+                               nflags=event.mask)
+        
+        #try the command
         try:
             subprocess.call(command.split())
         except OSError, err:
             print "Failed to run command '%s' %s" % (command, str(err))
-            
+        
+        #handle recursive watching of directories
         if self.recursive and os.path.isdir(event.pathname):
-            self.parent.addWatch(self.mask, event.pathname, True, self.command)
+            prefix = event.name
+            if self.prefix != "":
+                prefix = self.prefix + '/' + prefix
+            
+            self.parent.addWatch(self.mask, 
+                                 event.pathname, 
+                                 True, 
+                                 self.command, 
+                                 prefix)
 
     def process_IN_ACCESS(self, event):
         print "Access: ", event.pathname
@@ -249,9 +272,9 @@ class WatcherDaemon(Daemon):
         #for notifier in self.notifiers:
         #    notifier.start()
             
-    def addWatch(self, mask, folder, recursive, command):
+    def addWatch(self, mask, folder, recursive, command, prefix=""):
         wm = pyinotify.WatchManager()
-        handler = EventHandler(command, recursive, mask, self)
+        handler = EventHandler(command, recursive, mask, self, prefix)
         
         self.wdds.append(wm.add_watch(folder, mask, rec=recursive))
         # BUT we need a new ThreadNotifier so I can specify a different
