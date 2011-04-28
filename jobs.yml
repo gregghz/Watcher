@@ -51,7 +51,7 @@ job1:
   # When monitoring a directory, the events marked with an asterisk (*) above
   # can occur for files in the directory, in which case the name field in the
   # returned event data identifies the name of the file within the directory.
-  events: ['create', 'delete']
+  events: ['create', 'move_to']
 
   # TODO:
   # this currently isn't implemented, but this is where support will be added for:
@@ -69,4 +69,9 @@ job1:
   # $filename event-related file name
   # $tflags event flags (textually)
   # $nflags event flags (numerically)
-  command: ls -l $filename
+  # $dest_file this will manage recursion better if included as the dest (especially when copying or similar)
+  #     if $dest_file was left out of the command below, Watcher won't properly
+  #     handle newly created directories when watching recursively. It's fine
+  #     to leave out when recursive is false or you won't be creating new
+  #     directories.
+  command: cp -r $filename /home/user/Documents/$dest_file
