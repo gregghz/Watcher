@@ -1,6 +1,6 @@
 See jobs.yml for proper configuration syntax
 
-Dependencies: python, python-pyinotify
+Dependencies: python, python-pyinotify, python-yaml
 
 In Ubuntu (and Debian):
 
