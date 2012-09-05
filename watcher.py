@@ -25,6 +25,7 @@ import pyinotify
 import sys, os
 import datetime
 import subprocess
+import re
 from types import *
 from string import Template
 from yaml import load, dump # load is for read yaml, dump is for writing
@@ -160,14 +161,14 @@ class Daemon:
         """
 
 class EventHandler(pyinotify.ProcessEvent):
-    def __init__(self, command, recursive, mask, parent, prefix=""):
+    def __init__(self, command, recursive, mask, parent, prefix, root):
         pyinotify.ProcessEvent.__init__(self)
         self.command = command     #the command to be run
         self.recursive = recursive #watch recursively?
         self.mask = mask           #the watch mask
         self.parent = parent       #should be calling instance of WatcherDaemon
         self.prefix = prefix       #prefix to handle recursively watching new dirs
-
+        self.root = root        #root of watch (actually used to calculate subdirs)
     def runCommand(self, event):
         t = Template(self.command)
         
@@ -175,7 +176,11 @@ class EventHandler(pyinotify.ProcessEvent):
         dfile = event.name
         if self.prefix != "":
             dfile = self.prefix + '/' + dfile
-        
+        elif self.root != "":
+            dfile = re.sub('^'+re.escape(self.root+os.sep),'',event.path) + os.sep + dfile
+
+        #rdfile = os.path.dirname(event.path)+event.name
+
         #run substitutions on the command
         command = t.substitute(watched=event.path, 
                                filename=event.pathname,
@@ -194,7 +199,6 @@ class EventHandler(pyinotify.ProcessEvent):
             prefix = event.name
             if self.prefix != "":
                 prefix = self.prefix + '/' + prefix
-            
             self.parent.addWatch(self.mask, 
                                  event.pathname, 
                                  True, 
@@ -274,7 +278,7 @@ class WatcherDaemon(Daemon):
             
     def addWatch(self, mask, folder, recursive, command, prefix=""):
         wm = pyinotify.WatchManager()
-        handler = EventHandler(command, recursive, mask, self, prefix)
+        handler = EventHandler(command, recursive, mask, self, prefix, folder)
         
         self.wdds.append(wm.add_watch(folder, mask, rec=recursive))
         # BUT we need a new ThreadNotifier so I can specify a different
