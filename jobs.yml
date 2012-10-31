@@ -51,7 +51,7 @@ job1:
   # When monitoring a directory, the events marked with an asterisk (*) above
   # can occur for files in the directory, in which case the name field in the
   # returned event data identifies the name of the file within the directory.
-  events: ['create', 'move_to']
+  events: ['create', 'move_from', 'move_to']
 
   # TODO:
   # this currently isn't implemented, but this is where support will be added for:
@@ -74,4 +74,5 @@ job1:
   #     handle newly created directories when watching recursively. It's fine
   #     to leave out when recursive is false or you won't be creating new
   #     directories.
-  command: cp -r $filename /home/user/Documents/$dest_file
+  # $src_path is only used in move_to and is the corresponding path from move_from
+  command: cp -r $filename /home/user/Documents/$dest_file # $src_path

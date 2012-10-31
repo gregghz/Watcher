@@ -168,8 +168,10 @@ class EventHandler(pyinotify.ProcessEvent):
         self.mask = mask           #the watch mask
         self.parent = parent       #should be calling instance of WatcherDaemon
         self.prefix = prefix       #prefix to handle recursively watching new dirs
-        self.root = root        #root of watch (actually used to calculate subdirs)
-    def runCommand(self, event):
+        self.root = root           #root of watch (actually used to calculate subdirs)
+        self.move_map = {}
+        
+    def runCommand(self, event, ignore_cookie=True):
         t = Template(self.command)
         
         #build the dest_file
@@ -179,14 +181,21 @@ class EventHandler(pyinotify.ProcessEvent):
         elif self.root != "":
             dfile = re.sub('^'+re.escape(self.root+os.sep),'',event.path) + os.sep + dfile
 
-        #rdfile = os.path.dirname(event.path)+event.name
-
+        #find the src_path if it exists
+        src_path = ''
+        if not ignore_cookie and hasattr(event, 'cookie') and event.cookie in self.move_map:
+            src_path = self.move_map[event.cookie]
+            del self.move_map[event.cookie]
+            
         #run substitutions on the command
-        command = t.substitute(watched=event.path, 
-                               filename=event.pathname,
-                               dest_file=dfile, 
-                               tflags=event.maskname, 
-                               nflags=event.mask)
+        command = t.safe_substitute({
+                'watched': event.path,
+                'filename': event.pathname,
+                'dest_file': dfile,
+                'tflags': event.maskname,
+                'nflags': event.mask,
+                'src_path': src_path
+                })
         
         #try the command
         try:
@@ -239,11 +248,12 @@ class EventHandler(pyinotify.ProcessEvent):
 
     def process_IN_MOVED_FROM(self, event):
         print "Moved from: ", event.pathname
+        self.move_map[event.cookie] = event.pathname
         self.runCommand(event)
 
     def process_IN_MOVED_TO(self, event):
         print "Moved to: ", event.pathname
-        self.runCommand(event)
+        self.runCommand(event, False)
 
     def process_IN_OPEN(self, event):
         print "Opened: ", event.pathname
@@ -259,6 +269,7 @@ class WatcherDaemon(Daemon):
         self.notifiers = []
 
         # parse jobs.yml and add_watch/notifier for each entry
+        print jobs_file
         jobs = load(jobs_file, Loader=Loader)
         if jobs is not None:
             for job in jobs.iteritems():
