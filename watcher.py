@@ -25,6 +25,7 @@ import pyinotify
 import sys, os
 import datetime
 import subprocess
+import shlex
 import re
 from types import *
 from string import Template
@@ -199,7 +200,7 @@ class EventHandler(pyinotify.ProcessEvent):
         
         #try the command
         try:
-            subprocess.call(command.split())
+            subprocess.call(shlex.split(command))
         except OSError, err:
             print "Failed to run command '%s' %s" % (command, str(err))
         
