@@ -302,8 +302,7 @@ class WatcherDaemon(Daemon):
         n.start()
 
     def _loadWatcherDirectory(self):
-        home = os.path.expanduser('~')
-        watcher_dir = home + '/.watcher'
+        watcher_dir = defineWatcherDirectory()
         jobs_file = watcher_dir + '/jobs.yml'
 
         if not os.path.isdir(watcher_dir):
@@ -364,15 +363,21 @@ class WatcherDaemon(Daemon):
         else:
             return current_options | new_option
 
+def defineWatcherDirectory():
+    home = os.path.expanduser('~')
+    return home + '/.watcher'
+
 if __name__ == "__main__":
-    log = '/tmp/watcher_out'
+    watcher_dir = defineWatcherDirectory()
+    log = watcher_dir + '/watcher.log'
+    pidfile = watcher_dir + '/watcher.pid'
     # create the log
     f = open(log, 'w')
     f.close()
     
     try:
         # TODO: make stdout and stderr neutral location
-        daemon = WatcherDaemon('/tmp/watcher.pid', stdout=log, stderr=log)
+        daemon = WatcherDaemon(pidfile, stdout=log, stderr=log)
         if len(sys.argv) == 2:
             if 'start' == sys.argv[1]:
                 f = open(log, 'w')
@@ -390,7 +395,7 @@ if __name__ == "__main__":
                 sys.exit(2)
             sys.exit(0)
         else:
-            print "Usage: %s start|stop|restart" % sys.argv[0]
+            print "Usage: %s start|stop|restart|debug" % sys.argv[0]
             sys.exit(2)
     except Exception, e:
         print e
