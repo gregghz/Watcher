@@ -75,4 +75,5 @@ job1:
   #     to leave out when recursive is false or you won't be creating new
   #     directories.
   # $src_path is only used in move_to and is the corresponding path from move_from
+  # $src_rel_path [needs doc]
   command: cp -r $filename /home/user/Documents/$dest_file # $src_path
