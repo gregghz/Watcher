@@ -174,18 +174,24 @@ class EventHandler(pyinotify.ProcessEvent):
         
     def runCommand(self, event, ignore_cookie=True):
         t = Template(self.command)
-        
+        sub_regex = self.root
+
         #build the dest_file
         dfile = event.name
         if self.prefix != "":
             dfile = self.prefix + '/' + dfile
         elif self.root != "":
-            dfile = re.sub('^'+re.escape(self.root+os.sep),'',event.path) + os.sep + dfile
+            if event.path != self.root:
+                sub_regex = self.root+os.sep
+            dfile = re.sub('^'+re.escape(sub_regex),'',event.path) + os.sep + dfile
 
         #find the src_path if it exists
         src_path = ''
+        src_rel_path = ''
         if not ignore_cookie and hasattr(event, 'cookie') and event.cookie in self.move_map:
             src_path = self.move_map[event.cookie]
+            if self.root != "":
+                src_rel_path = re.sub('^'+re.escape(sub_regex), '', src_path)
             del self.move_map[event.cookie]
             
         #run substitutions on the command
@@ -195,7 +201,8 @@ class EventHandler(pyinotify.ProcessEvent):
                 'dest_file': dfile,
                 'tflags': event.maskname,
                 'nflags': event.mask,
-                'src_path': src_path
+                'src_path': src_path,
+                'src_rel_path': src_rel_path
                 })
         
         #try the command
