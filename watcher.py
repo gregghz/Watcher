@@ -59,7 +59,7 @@ class Daemon:
             if pid > 0:
                 #exit first parent
                 sys.exit(0)
-        except OSError, e:
+        except OSError as e:
             sys.stderr.write("fork #1 failed: %d (%s)\n" % (e.errno, e.strerror))
             sys.exit(1)
 
@@ -74,7 +74,7 @@ class Daemon:
             if pid > 0:
                 # exit from second parent
                 sys.exit(0)
-        except OSError, e:
+        except OSError as e:
             sys.stderr.write("fork #2 failed: %d (%s)\n" % (e.errno, e.strerror))
             sys.exit(1)
 
@@ -139,13 +139,13 @@ class Daemon:
             while 1:
                 os.kill(pid, SIGTERM)
                 time.sleep(0.1)
-        except OSError, err:
+        except OSError as err:
             err = str(err)
             if err.find("No such process") > 0:
                 if os.path.exists(self.pidfile):
                     os.remove(self.pidfile)
             else:
-                print str(err)
+                print(str(err))
                 sys.exit(1)
 
     def restart(self):
@@ -208,8 +208,8 @@ class EventHandler(pyinotify.ProcessEvent):
         #try the command
         try:
             subprocess.call(shlex.split(command))
-        except OSError, err:
-            print "Failed to run command '%s' %s" % (command, str(err))
+        except OSError as err:
+            print("Failed to run command '%s' %s" % (command, str(err)))
         
         #handle recursive watching of directories
         if self.recursive and os.path.isdir(event.pathname):
@@ -223,53 +223,53 @@ class EventHandler(pyinotify.ProcessEvent):
                                  prefix)
 
     def process_IN_ACCESS(self, event):
-        print "Access: ", event.pathname
+        print("Access: ", event.pathname)
         self.runCommand(event)
 
     def process_IN_ATTRIB(self, event):
-        print "Attrib: ", event.pathname
+        print("Attrib: ", event.pathname)
         self.runCommand(event)
 
     def process_IN_CLOSE_WRITE(self, event):
-        print "Close write: ", event.pathname
+        print("Close write: ", event.pathname)
         self.runCommand(event)
 
     def process_IN_CLOSE_NOWRITE(self, event):
-        print "Close nowrite: ", event.pathname
+        print("Close nowrite: ", event.pathname)
         self.runCommand(event)
 
     def process_IN_CREATE(self, event):
-        print "Creating: ", event.pathname
+        print("Creating: ", event.pathname)
         self.runCommand(event)
 
     def process_IN_DELETE(self, event):
-        print "Deleteing: ", event.pathname
+        print("Deleteing: ", event.pathname)
         self.runCommand(event)
 
     def process_IN_MODIFY(self, event):
-        print "Modify: ", event.pathname
+        print("Modify: ", event.pathname)
         self.runCommand(event)
 
     def process_IN_MOVE_SELF(self, event):
-        print "Move self: ", event.pathname
+        print("Move self: ", event.pathname)
         self.runCommand(event)
 
     def process_IN_MOVED_FROM(self, event):
-        print "Moved from: ", event.pathname
+        print("Moved from: ", event.pathname)
         self.move_map[event.cookie] = event.pathname
         self.runCommand(event)
 
     def process_IN_MOVED_TO(self, event):
-        print "Moved to: ", event.pathname
+        print("Moved to: ", event.pathname)
         self.runCommand(event, False)
 
     def process_IN_OPEN(self, event):
-        print "Opened: ", event.pathname
+        print("Opened: ", event.pathname)
         self.runCommand(event)
 
 class WatcherDaemon(Daemon):
     def run(self):
-        print datetime.datetime.today()
+        print(datetime.datetime.today())
 
         dir = self._loadWatcherDirectory()
         jobs_file = file(dir + '/jobs.yml', 'r')
@@ -277,10 +277,10 @@ class WatcherDaemon(Daemon):
         self.notifiers = []
 
         # parse jobs.yml and add_watch/notifier for each entry
-        print jobs_file
+        print(jobs_file)
         jobs = load(jobs_file, Loader=Loader)
         if jobs is not None:
-            for job in jobs.iteritems():
+            for job in jobs.items():
                 sys.stdout.write(job[0] + "\n")
                 # get the basic config info
                 mask = self._parseMask(job[1]['events'])
@@ -398,13 +398,13 @@ if __name__ == "__main__":
             elif 'debug' == sys.argv[1]:
                 daemon.run()
             else:
-                print "Unkown Command"
+                print("Unkown Command")
                 sys.exit(2)
             sys.exit(0)
         else:
-            print "Usage: %s start|stop|restart|debug" % sys.argv[0]
+            print("Usage: %s start|stop|restart|debug" % sys.argv[0])
             sys.exit(2)
-    except Exception, e:
-        print e
+    except Exception as e:
+        print(e)
         os.remove(log)
         raise
