@@ -265,12 +265,11 @@ class WatcherDaemon(Daemon):
         print(datetime.datetime.today())
 
         dir = self._loadWatcherDirectory()
-        jobs_file = file(dir + '/jobs.yml', 'r')
+        jobs_file = open(dir + '/jobs.yml', 'r')
         self.wdds = []
         self.notifiers = []
 
         # parse jobs.yml and add_watch/notifier for each entry
-        print(jobs_file)
         jobs = load(jobs_file, Loader=Loader)
         if jobs is not None:
             for job in jobs.items():
