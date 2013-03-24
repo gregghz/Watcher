@@ -171,7 +171,7 @@ class EventHandler(pyinotify.ProcessEvent):
         self.prefix = prefix       #prefix to handle recursively watching new dirs
         self.root = root           #root of watch (actually used to calculate subdirs)
         self.move_map = {}
-        
+
     def runCommand(self, event, ignore_cookie=True):
         t = Template(self.command)
         sub_regex = self.root
@@ -193,7 +193,7 @@ class EventHandler(pyinotify.ProcessEvent):
             if self.root != "":
                 src_rel_path = re.sub('^'+re.escape(sub_regex), '', src_path)
             del self.move_map[event.cookie]
-            
+
         #run substitutions on the command
         command = t.safe_substitute({
                 'watched': event.path,
@@ -204,22 +204,22 @@ class EventHandler(pyinotify.ProcessEvent):
                 'src_path': src_path,
                 'src_rel_path': src_rel_path
                 })
-        
+
         #try the command
         try:
             subprocess.call(shlex.split(command))
         except OSError, err:
             print "Failed to run command '%s' %s" % (command, str(err))
-        
+
         #handle recursive watching of directories
         if self.recursive and os.path.isdir(event.pathname):
             prefix = event.name
             if self.prefix != "":
                 prefix = self.prefix + '/' + prefix
-            self.parent.addWatch(self.mask, 
-                                 event.pathname, 
-                                 True, 
-                                 self.command, 
+            self.parent.addWatch(self.mask,
+                                 event.pathname,
+                                 True,
+                                 self.command,
                                  prefix)
 
     def process_IN_ACCESS(self, event):
@@ -294,18 +294,18 @@ class WatcherDaemon(Daemon):
         # TODO: load test this ... is having a thread for each a problem?
         #for notifier in self.notifiers:
         #    notifier.start()
-            
+
     def addWatch(self, mask, folder, recursive, command, prefix=""):
         wm = pyinotify.WatchManager()
         handler = EventHandler(command, recursive, mask, self, prefix, folder)
-        
+
         self.wdds.append(wm.add_watch(folder, mask, rec=recursive))
         # BUT we need a new ThreadNotifier so I can specify a different
         # EventHandler instance for each job
         # this means that each job has its own thread as well (I think)
         n = pyinotify.ThreadedNotifier(wm, handler)
         self.notifiers.append(pyinotify.ThreadedNotifier(wm, handler))
-        
+
         n.start()
 
     def _loadWatcherDirectory(self):
@@ -381,7 +381,7 @@ if __name__ == "__main__":
     # create the log
     f = open(log, 'w')
     f.close()
-    
+
     try:
         # TODO: make stdout and stderr neutral location
         daemon = WatcherDaemon(pidfile, stdout=log, stderr=log)
