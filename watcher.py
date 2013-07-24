@@ -162,10 +162,11 @@ class Daemon:
         """
 
 class EventHandler(pyinotify.ProcessEvent):
-    def __init__(self, command, recursive, mask, parent, prefix, root):
+    def __init__(self, command, recursive, exclude, mask, parent, prefix, root):
         pyinotify.ProcessEvent.__init__(self)
         self.command = command     #the command to be run
         self.recursive = recursive #watch recursively?
+        self.exclude = exclude      #path to exclude
         self.mask = mask           #the watch mask
         self.parent = parent       #should be calling instance of WatcherDaemon
         self.prefix = prefix       #prefix to handle recursively watching new dirs
@@ -283,23 +284,29 @@ class WatcherDaemon(Daemon):
             for job in jobs.iteritems():
                 sys.stdout.write(job[0] + "\n")
                 # get the basic config info
+                
                 mask = self._parseMask(job[1]['events'])
                 folder = job[1]['watch']
+                exclude = job[1]['exclude']
                 recursive = job[1]['recursive']
                 command = job[1]['command']
 
-                self.addWatch(mask, folder, recursive, command)
+                self.addWatch(mask, folder, exclude, recursive, command)
 
         # now we need to start ALL the notifiers.
         # TODO: load test this ... is having a thread for each a problem?
         #for notifier in self.notifiers:
         #    notifier.start()
 
-    def addWatch(self, mask, folder, recursive, command, prefix=""):
+    def addWatch(self, mask, folder, exclude, recursive, command, prefix=""):
         wm = pyinotify.WatchManager()
-        handler = EventHandler(command, recursive, mask, self, prefix, folder)
+        handler = EventHandler(command, recursive, mask, self, prefix, folder, exclude)
+        
+        # adding exclusion list
+        excl_lst = exclude
+        excl = pyinotify.ExcludeFilter(excl_lst)
 
-        self.wdds.append(wm.add_watch(folder, mask, rec=recursive))
+        self.wdds.append(wm.add_watch(folder, mask, rec=recursive, exclude_filter=excl))
         # BUT we need a new ThreadNotifier so I can specify a different
         # EventHandler instance for each job
         # this means that each job has its own thread as well (I think)

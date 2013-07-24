@@ -20,15 +20,22 @@
 
 # ---------------------------END COPYRIGHT--------------------------------------
 
+# ---------------------------Eclusion feature added by Brunus ---------------------------------
+# Hi added an exclusion feature, something realy needed to monitor a website tree for exemple
+# brunus.v@gmail.com or @brunus_V on tweeter
+# ---------------------------------------------------------------------------------------------
+
 # This is a sample jobs file. Yours should go in ~/.watcher/jobs.yml
 # if you run watcher.py start, this file and folder will be created
 
 job1:
   # a generic label for a job.  Currently not used make it whatever you want
-  label: Watch /tmp for added or removed files
+  label: Watch /var/www for added or removed files
 
   # directory or file to watch.  Probably should be abs path.
-  watch: /tmp
+  watch: /var/www
+  # directories or files to exclude
+  exclude: ['/var/www/site1/cache', '/var/www/site2/cache']
 
   # list of events to watch for.
   # supported events:
@@ -51,7 +58,7 @@ job1:
   # When monitoring a directory, the events marked with an asterisk (*) above
   # can occur for files in the directory, in which case the name field in the
   # returned event data identifies the name of the file within the directory.
-  events: ['create', 'move_from', 'move_to']
+  events: ['create', 'move_from', 'move_to', 'delete', 'modify']
 
   # TODO:
   # this currently isn't implemented, but this is where support will be added for:
@@ -61,7 +68,7 @@ job1:
 
   # if true, watcher will monitor directories recursively for changes
   recursive: true
-  
+
   # the command to run. Can be any command. It's run as whatever user started watcher.
   # The following wildards may be used inside command specification:
   # $$ dollar sign
@@ -76,4 +83,5 @@ job1:
   #     directories.
   # $src_path is only used in move_to and is the corresponding path from move_from
   # $src_rel_path [needs doc]
-  command: cp -r $filename /home/user/Documents/$dest_file # $src_path
+  # command: cp -r $filename /home/user/Documents/$dest_file # $src_path
+  command: echo $filename # $src_path
