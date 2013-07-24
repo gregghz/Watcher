@@ -20,6 +20,11 @@
 
 # ---------------------------END COPYRIGHT--------------------------------------
 
+# ---------------------------Eclusion feature added by Brunus ---------------------------------
+# Hi added an exclusion feature, something realy needed to monitor a website tree for exemple
+# brunus.v@gmail.com or @brunus_V on tweeter
+# ---------------------------------------------------------------------------------------------
+
 # This is a sample jobs file. Yours should go in ~/.watcher/jobs.yml
 # if you run watcher.py start, this file and folder will be created
 
@@ -78,4 +83,5 @@ job1:
   #     directories.
   # $src_path is only used in move_to and is the corresponding path from move_from
   # $src_rel_path [needs doc]
-  command: cp -r $filename /home/user/Documents/$dest_file # $src_path
+  # command: cp -r $filename /home/user/Documents/$dest_file # $src_path
+  command: echo $filename # $src_path
