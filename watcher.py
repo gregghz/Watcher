@@ -203,7 +203,8 @@ class EventHandler(pyinotify.ProcessEvent):
                 'tflags': event.maskname,
                 'nflags': event.mask,
                 'src_path': src_path,
-                'src_rel_path': src_rel_path
+                'src_rel_path': src_rel_path,
+                'datetime': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 })
 
         #try the command
