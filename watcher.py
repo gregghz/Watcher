@@ -215,11 +215,13 @@ class EventHandler(pyinotify.ProcessEvent):
 
         #handle recursive watching of directories
         if self.recursive and os.path.isdir(event.pathname):
+
             prefix = event.name
             if self.prefix != "":
                 prefix = self.prefix + '/' + prefix
             self.parent.addWatch(self.mask,
                                  event.pathname,
+                                 self.exclude,
                                  True,
                                  self.command,
                                  prefix)
@@ -301,7 +303,7 @@ class WatcherDaemon(Daemon):
 
     def addWatch(self, mask, folder, exclude, recursive, command, prefix=""):
         wm = pyinotify.WatchManager()
-        handler = EventHandler(command, recursive, mask, self, prefix, folder, exclude)
+        handler = EventHandler(command, recursive, exclude, mask, self, prefix, folder)
         
         # adding exclusion list
         excl_lst = exclude
@@ -313,7 +315,6 @@ class WatcherDaemon(Daemon):
         # this means that each job has its own thread as well (I think)
         n = pyinotify.ThreadedNotifier(wm, handler)
         self.notifiers.append(pyinotify.ThreadedNotifier(wm, handler))
-
         n.start()
 
     def _loadWatcherDirectory(self):
