@@ -85,4 +85,4 @@ job1:
   # $src_rel_path [needs doc]
   # $datetime output date and time of the event, format is : Y-m-d H:M:S
   # command: cp -r $filename /home/user/Documents/$dest_file # $src_path
-  command: echo $filename # $src_path
+  command: echo $datetime $filename $tflags # $src_path
