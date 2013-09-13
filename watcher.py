@@ -380,8 +380,7 @@ class WatcherDaemon(Daemon):
             return current_options | new_option
 
 def defineWatcherDirectory():
-    home = os.path.expanduser('~')
-    return home + '/.watcher'
+    return os.path.expanduser('~') + '/.watcher'
 
 if __name__ == "__main__":
     watcher_dir = defineWatcherDirectory()
