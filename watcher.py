@@ -296,11 +296,6 @@ class WatcherDaemon(Daemon):
 
                 self.addWatch(mask, folder, exclude, recursive, command)
 
-        # now we need to start ALL the notifiers.
-        # TODO: load test this ... is having a thread for each a problem?
-        #for notifier in self.notifiers:
-        #    notifier.start()
-
     def addWatch(self, mask, folder, exclude, recursive, command, prefix=""):
         wm = pyinotify.WatchManager()
         handler = EventHandler(command, recursive, exclude, mask, self, prefix, folder)
