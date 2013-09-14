@@ -379,6 +379,11 @@ def defineWatcherDirectory():
 
 if __name__ == "__main__":
     watcher_dir = defineWatcherDirectory()
+    try:
+        os.mkdir(watcher_dir)
+    except OSError:
+        pass
+
     log = watcher_dir + '/watcher.log'
     pidfile = watcher_dir + '/watcher.pid'
     # create the log
